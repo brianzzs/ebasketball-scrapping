@@ -21,30 +21,94 @@ namespace eBasketballScrapper.Application.Services
 
         }
 
-        public async Task<Dictionary<string, Dictionary<string, string>>> GetPlayersNames(HtmlNode tableRow)
+        public BasicMatchInfoDTO GetPlayersNameAndTeam(HtmlNode tableRow)
         {
-            //playerNumber 0 would be "Home"
-            //playerNumber 1 would be "Away"
-            Dictionary<string, Dictionary<string, string>> match = new Dictionary<string, Dictionary<string, string>>();
-
-            var HeadToHead = tableRow.Descendants("td").ToList().Where(e => !e.InnerText.Equals("-")).ToList()[1].InnerText.Replace("\n", "").Trim().Split(" v ").ToList();
-            var playerAName = HeadToHead[0].Split("(")[1].Split(")").FirstOrDefault();
-            var playerBName = HeadToHead[1].Split("(")[1].Split(")").FirstOrDefault();
-            var teamAName = HeadToHead[0].Split("(").FirstOrDefault();
-            var teamBName = HeadToHead[1].Split("(").FirstOrDefault();
-
-            match[playerAName] = new Dictionary<string, string>
+            var tdToBeWorkedWith = tableRow.Descendants("td").ToList().Where(e => !e.InnerText.Equals("-")).ToList();
+            try
+            {
+                if (tableRow.InnerHtml.Contains("<img "))
                 {
-                    { "Player", playerAName },
-                    { "Team", teamAName }
+                    var tdListWithoutImg = tableRow.Descendants("td").ToList().Where(e => !e.InnerText.Equals("-")).ToList();
+                    var playersList = tdListWithoutImg[2].InnerHtml.Split("/")[3].Replace("%28", "(").Replace("%29", ")").Replace("-", " ").Split(" vs ").ToList();
+                    var firstPlayer = playersList[0].Split("Esports")[0].Trim();
+                    var secondPlayer = playersList[1].Split("Esports")[0].Trim();
+                    var firstPlayerTeamName = firstPlayer.Split("(")[0].Trim();
+                    var firstPlayerName = firstPlayer.Split("(")[1].Replace(")", "").Trim();
+                    var secondPlayerTeamName = secondPlayer.Split("(")[0].Trim();
+                    var secondPlayerName = secondPlayer.Split("(")[1].Replace(")", "").Trim();
+
+                    var BasicMatchInfoFromAntiScrapperSystem = new BasicMatchInfoDTO
+                    {
+                        PlayerA = firstPlayerName,
+                        PlayerB = secondPlayerName,
+                        TeamA = firstPlayerTeamName,
+                        TeamB = secondPlayerTeamName
+                    };
+
+                    Console.WriteLine($"First AntiScrapper \nPlayer 1: {BasicMatchInfoFromAntiScrapperSystem.PlayerA}, Player 2: {BasicMatchInfoFromAntiScrapperSystem.PlayerB}, Team A: {BasicMatchInfoFromAntiScrapperSystem.TeamA}, Team B: {BasicMatchInfoFromAntiScrapperSystem.TeamB}");
+
+                    return BasicMatchInfoFromAntiScrapperSystem;
+                }
+
+                var tdList = tableRow.Descendants("td").ToList().Where(e => !e.InnerText.Equals("-")).ToList();
+                if (!tdList[1].Descendants("a").ToList()[0].InnerHtml.Contains("(") || !tdList[1].Descendants("a").ToList()[1].InnerHtml.Contains("("))
+                {
+                    var teams = tableRow.Descendants("td").ToList().Where(e => !e.InnerText.Equals("-")).ToList()[2].InnerHtml;
+                    var playersList = teams.Split("/")[3].Replace("%28", "(").Replace("%29", ")").Replace("-", " ").Split(" vs ").ToList();
+                    var firstPlayer = playersList[0].Split("Esports")[0].Trim();
+                    var secondPlayer = playersList[1].Split("Esports")[0].Trim();
+                    var firstPlayerTeamName = firstPlayer.Split("(")[0].Trim();
+                    var firstPlayerName = firstPlayer.Split("(")[1].Replace(")", "").Trim();
+                    var secondPlayerTeamName = secondPlayer.Split("(")[0].Trim();
+                    var secondPlayerName = secondPlayer.Split("(")[1].Replace(")", "").Trim();
+
+                    var BasicMatchInfoFromAntiScrapperSystem = new BasicMatchInfoDTO
+                    {
+                        PlayerA = firstPlayerName,
+                        PlayerB = secondPlayerName,
+                        TeamA = firstPlayerTeamName,
+                        TeamB = secondPlayerTeamName
+                    };
+
+                    Console.WriteLine($"Second AntiScrapper \nPlayer 1: {BasicMatchInfoFromAntiScrapperSystem.PlayerA}, Player 2: {BasicMatchInfoFromAntiScrapperSystem.PlayerB}, Team A: {BasicMatchInfoFromAntiScrapperSystem.TeamA}, Team B: {BasicMatchInfoFromAntiScrapperSystem.TeamB}");
+
+                    return BasicMatchInfoFromAntiScrapperSystem;
+                }
+                var HeadToHead = tdList[1].InnerText.Replace("\n", "").Trim().Split(" v ").ToList();
+
+                //[1] = match, [0] = data, [2] = result
+
+
+                var playerASplit = HeadToHead[0].Split("(");
+                var playerBSplit = HeadToHead[1].Split("(");
+
+                if (playerASplit.Length < 2 || playerBSplit.Length < 2)
+                {
+                    Console.WriteLine($"Unexpected player data format");
+                }
+
+                var playerAName = HeadToHead[0].Split("(")[1].Split(")")[0];
+                var playerBName = HeadToHead[1].Split("(")[1].Split(")")[0];
+                var teamAName = HeadToHead[0].Split("(")[0].Trim();
+                var teamBName = HeadToHead[1].Split("(")[0].Trim();
+
+                var BasicMatchInfo = new BasicMatchInfoDTO
+                {
+                    PlayerA = playerAName,
+                    PlayerB = playerBName,
+                    TeamA = teamAName,
+                    TeamB = teamBName
                 };
 
-            match[playerBName] = new Dictionary<string, string>
-                {
-                    { "Player", playerBName },
-                    { "Team", teamBName }
-                };
-            return match;
+                Console.WriteLine($"No AntiScrapper \nPlayer A: {BasicMatchInfo.PlayerA}, Player B: {BasicMatchInfo.PlayerB}, Team A: {BasicMatchInfo.TeamA}, Team B: {BasicMatchInfo.TeamB}");
+                return BasicMatchInfo;
+            }
+            catch
+            {
+                throw new Exception("Blablabla");
+                return null;
+            }
+
         }
 
         public async Task<List<Game>> ParseMatchTable(string response)
@@ -58,7 +122,7 @@ namespace eBasketballScrapper.Application.Services
             matches.RemoveAt(0);
             foreach (var match in matches)
             {
-                var playerName = GetPlayersNames(match);
+                GetPlayersNameAndTeam(match);
             }
 
             return matchList;
