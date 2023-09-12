@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using eBasketballScrapper.Core.Entities;
+﻿using eBasketballScrapper.Core.Entities;
 using HtmlAgilityPack;
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+
 namespace eBasketballScrapper.Application.Services
 {
     public class MatchScrapperService
@@ -106,9 +104,43 @@ namespace eBasketballScrapper.Application.Services
             catch
             {
                 throw new Exception("Blablabla");
-                return null;
             }
 
+        }
+
+        public BasicMatchInfoDTO RetrieveInfo(HtmlNode tableRow)
+        {
+            var tdToBeWorkedWith = tableRow.Descendants("td").ToList().FirstOrDefault();
+            DateTime matchDate = DateTime.Parse(tdToBeWorkedWith.GetAttributeValue("data-dt", ""));
+            string baseUrl = "https://betsapi.com";
+            var url = tableRow.Descendants("a").ToList().LastOrDefault().GetAttributeValue("href", "");
+            int id = Int32.Parse(url.Split("/")[2]);
+            CultureInfo userCulture = CultureInfo.CurrentCulture;
+
+            string formattedDateTime = matchDate.ToString(userCulture.DateTimeFormat.ShortDatePattern + " " + userCulture.DateTimeFormat.LongTimePattern);
+
+            var MatchInfo = new BasicMatchInfoDTO()
+            {
+                Id = id,
+                MatchDate = DateTime.Parse(formattedDateTime),
+                Url = baseUrl + url,
+            };
+
+            return MatchInfo;
+
+        }
+
+        public BasicMatchInfoDTO GetScores (HtmlNode tableRow)
+        {
+            var tdToBeWorkedWith = tableRow.Descendants("td").ToList().LastOrDefault();
+            var scoresList = tdToBeWorkedWith.InnerText.Replace("\n", "").Trim().Split("-").ToList();
+            var scores = new BasicMatchInfoDTO()
+            {
+                ScoreA = Int32.Parse(scoresList[0]),
+                ScoreB = Int32.Parse(scoresList[1]),
+            };
+
+            return scores;
         }
 
         public async Task<List<Game>> ParseMatchTable(string response)
@@ -122,8 +154,29 @@ namespace eBasketballScrapper.Application.Services
             matches.RemoveAt(0);
             foreach (var match in matches)
             {
-                GetPlayersNameAndTeam(match);
+
+                var HeadToHeadInfo = GetPlayersNameAndTeam(match);
+                var MatchInfo = RetrieveInfo(match);
+                var scores = GetScores(match);
+                var game = new Game()
+                {
+                    Id = MatchInfo.Id,
+                    PlayerA = HeadToHeadInfo.PlayerA,
+                    TeamA = HeadToHeadInfo.TeamA,
+                    ScoreA = scores.ScoreA,
+                    PlayerB = HeadToHeadInfo.PlayerB,
+                    TeamB = HeadToHeadInfo.TeamB,
+                    ScoreB = scores.ScoreB,
+                    MatchDate = MatchInfo.MatchDate,
+                    Url = MatchInfo.Url,
+                };
+                matchList.Add(game);
+                string gameInfo = $"Game Id: {game.Id}, Player A: {game.PlayerA}, Team A: {game.TeamA}, Score A: {game.ScoreA}, Player B: {game.PlayerB}, Team B: {game.TeamB}, Score B: {game.ScoreB}, Match Date: {game.MatchDate}, URL: {game.Url}";
+
+                Console.WriteLine(gameInfo);
+
             }
+
 
             return matchList;
         }
