@@ -10,7 +10,7 @@ namespace eBasketballScrapper.Infrastructure.Data
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseMySql("Server=localhost; Port=3306; initial catalog =eBasketballAI; uid=root; pwd=bluegreendark2!", new MySqlServerVersion(new Version(8, 0, 34)));
+            optionsBuilder.UseMySql("Server=localhost; Port=3306; initial catalog =eBasketballAI; uid=root; pwd=#", new MySqlServerVersion(new Version(8, 0, 34)));
         }
 
     }
